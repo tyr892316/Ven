@@ -22,4 +22,4 @@ jobs:
       - name: Install GCC
         run: npm install cloudscraper request randomstring
       - name: Install GCC
-        run: node m.js https://graph.vshield.pro 300 
+        run: node m.js https://dstatlove.xyz/hit 300 
