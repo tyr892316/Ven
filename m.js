@@ -56,7 +56,7 @@ var int = setInterval(() => {
             request(options);
     });    
 });
-setTimeout(() => clearInterval(int), time * 1000);
+setTimeout(() => clearInterval(int), time * 10000);
 process.on('uncaughtException', function(err) {
     
 });
