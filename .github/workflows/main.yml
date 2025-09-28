@@ -20,4 +20,4 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install GCC
-        run: node k.js https://app19398.cloudwayssites.com/ 2000 100 h1
+        run: node k.js https://app19398.cloudwayssites.com/users.json 3000
