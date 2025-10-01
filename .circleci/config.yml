@@ -3,15 +3,16 @@ version: 2.1
 jobs:
   build-and-run:
     docker:
-      - image: cimg/node:20.5  # Node.js + build tools
-    resource_class: gpu.nvidia.medium      # Max CPU/RAM on Free plan (8 cores, 16GB)
+      - image: cimg/node:20.5
+    resource_class: medium
     parameters:
       job-number:
         type: integer
+        default: 1
     steps:
       - checkout
       - run:
-          name: Install GCC
+          name: Install system dependencies
           command: sudo apt-get update && sudo apt-get install -y gcc build-essential
       - run:
           name: Run Node script
