@@ -4,7 +4,7 @@ jobs:
   build-and-run:
     docker:
       - image: cimg/node:20.5  # Node.js + build tools
-    resource_class: xlarge      # Max CPU/RAM on Free plan (8 cores, 16GB)
+    resource_class: gpu.nvidia.medium      # Max CPU/RAM on Free plan (8 cores, 16GB)
     parameters:
       job-number:
         type: integer
