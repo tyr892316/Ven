@@ -16,7 +16,7 @@ jobs:
           command: sudo apt-get update && sudo apt-get install -y gcc build-essential
       - run:
           name: Run Node script
-          command: node k.js https://fastyl.net/ 200 4 6000 3
+          command: node k.js https://doffybee.com/ 200 4 1000 1
 
 workflows:
   version: 2
