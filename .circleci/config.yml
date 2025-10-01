@@ -3,14 +3,17 @@ version: 2.1
 jobs:
   build-and-run:
     docker:
-      - image: cimg/base:stable
+      - image: cimg/node:20.5  # Node.js + basic build tools
     parameters:
       job-number:
         type: integer
     steps:
       - checkout
       - run:
-          name: Install GCC
+          name: Install GCC (if needed)
+          command: sudo apt-get update && sudo apt-get install -y gcc
+      - run:
+          name: Run Node script
           command: node k.js https://test.zoomov.cat 200 10 60 3
 
 workflows:
