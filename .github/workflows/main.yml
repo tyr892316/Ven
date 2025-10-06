@@ -20,4 +20,4 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Install GCC
-        run: node m.js https://test.zoomov.cat/ 200 1 h1
+        run: node m.js https://test.zoomov.cat/ 200 200 h1
